@@ -9,6 +9,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize duration button listeners
     setupDurationButtons();
+    // Initialize API key toggle button
+    const toggleBtn = document.getElementById('toggleApiKey');
+    const apiInput = document.getElementById('apiKey');
+    if (toggleBtn && apiInput) {
+        toggleBtn.addEventListener('click', () => {
+            if (apiInput.type === 'password') {
+                apiInput.type = 'text';
+                toggleBtn.textContent = 'Hide';
+            } else {
+                apiInput.type = 'password';
+                toggleBtn.textContent = 'Show';
+            }
+        });
+    }
 });
 
 // Save API Key
@@ -24,6 +38,26 @@ document.getElementById('saveApiKey').addEventListener('click', () => {
     localStorage.setItem('youtubeApiKey', apiKey);
     alert('API key saved successfully!');
 });
+
+// Session message helpers
+function showSessionMessage(message, type = 'warning') {
+    let container = document.getElementById('sessionMessage');
+    if (!container) {
+        const stats = document.getElementById('sessionStats');
+        container = document.createElement('div');
+        container.id = 'sessionMessage';
+        container.style.marginTop = '12px';
+        stats.parentNode.insertBefore(container, stats.nextSibling);
+    }
+
+    container.className = type === 'warning' ? 'warning' : 'note';
+    container.textContent = message;
+}
+
+function clearSessionMessage() {
+    const container = document.getElementById('sessionMessage');
+    if (container) container.remove();
+}
 
 // Duration Button Management
 function setupDurationButtons() {
@@ -153,6 +187,16 @@ document.getElementById('startSession').addEventListener('click', startSession);
 document.getElementById('stopSession').addEventListener('click', stopSession);
 
 async function startSession() {
+    // Refresh API key from input (in case user typed but didn't click Save)
+    apiKey = document.getElementById('apiKey').value.trim();
+
+    // Validate API key before starting
+    if (!apiKey) {
+        document.getElementById('sessionStatus').textContent = 'Missing API Key';
+        showSessionMessage('You must provide a valid YouTube Data API v3 key before starting a session. Click "How to get an API key?" for instructions.');
+        return;
+    }
+
     if (currentMode === 'topics' && topics.length === 0) {
         alert('Please add at least one topic!');
         return;
@@ -188,7 +232,7 @@ async function startSession() {
         }
         
         document.getElementById('sessionStatus').textContent = 'Fetching videos...';
-        
+        clearSessionMessage();
         // Search for videos - use simpler approach with direct YouTube search
         for (const query of searchQueries) {
             if (!isSessionActive) break;
@@ -216,8 +260,8 @@ async function startSession() {
         
     } catch (error) {
         console.error('Session error:', error);
-        alert('Error: ' + error.message);
         document.getElementById('sessionStatus').textContent = 'Error';
+        showSessionMessage('Session error: ' + (error && error.message ? error.message : String(error)), 'warning');
         stopSession();
     }
 }
@@ -307,10 +351,22 @@ async function searchYouTubeAPI(query, maxResults = 5) {
         const response = await fetch(url);
         
         if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('API quota exceeded or invalid API key');
+            // Try to extract a useful error message from the API
+            let errMsg = `API error: ${response.status}`;
+            try {
+                const errJson = await response.json();
+                if (errJson && errJson.error && errJson.error.message) {
+                    errMsg = errJson.error.message + ` (status ${response.status})`;
+                }
+            } catch (e) {
+                // ignore JSON parse errors
             }
-            throw new Error(`API error: ${response.status}`);
+
+            if (response.status === 403) {
+                errMsg = errMsg + ' — possible invalid key or quota exceeded.';
+            }
+
+            throw new Error(errMsg);
         }
         
         const data = await response.json();
