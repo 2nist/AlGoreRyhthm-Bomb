@@ -15,11 +15,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleBtn && apiInput) {
         toggleBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            if (apiInput.type === 'password') {
-                apiInput.type = 'text';
+
+            // Re-query the input in case it was replaced
+            let input = document.getElementById('apiKey');
+            if (!input) return;
+
+            const isPassword = input.getAttribute('type') === 'password' || input.type === 'password';
+
+            if (isPassword) {
+                // show
+                try {
+                    input.type = 'text';
+                    input.setAttribute('type', 'text');
+                } catch (err) {
+                    // Some browsers may block dynamic type changes; fallback to replacing the element
+                    const replacement = document.createElement('input');
+                    replacement.type = 'text';
+                    replacement.id = input.id;
+                    replacement.className = input.className;
+                    replacement.placeholder = input.placeholder;
+                    replacement.value = input.value;
+                    input.parentNode.replaceChild(replacement, input);
+                }
                 toggleBtn.textContent = 'Hide';
             } else {
-                apiInput.type = 'password';
+                // hide
+                try {
+                    input.type = 'password';
+                    input.setAttribute('type', 'password');
+                } catch (err) {
+                    // Fallback: replace input with password-type element
+                    const replacement = document.createElement('input');
+                    replacement.type = 'password';
+                    replacement.id = input.id;
+                    replacement.className = input.className;
+                    replacement.placeholder = input.placeholder;
+                    replacement.value = input.value;
+                    input.parentNode.replaceChild(replacement, input);
+                }
                 toggleBtn.textContent = 'Show';
             }
         });
