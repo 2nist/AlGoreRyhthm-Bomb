@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleBtn = document.getElementById('toggleApiKey');
     const apiInput = document.getElementById('apiKey');
     if (toggleBtn && apiInput) {
-        toggleBtn.addEventListener('click', () => {
+        toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             if (apiInput.type === 'password') {
                 apiInput.type = 'text';
                 toggleBtn.textContent = 'Hide';
